@@ -1,0 +1,28 @@
+_abstract_DAO.js:
+    - function update
+    - _check_object
+
+_abstract_CRUD.js:
+    - update / delete
+
+test.js
+    - middlewares
+
+
+Documentation
+    fichier json (swagger)
+
+expres-graphql
+
+mettre en prod l'api sur vps 
+
+
+rendu 
+dim 24 mars 
+-spec rest (open api, code quality)
+-spec graphQL(graphQL,code quality)
+-fo rest(respect diapo)
+-fo graphQl(query,mutations)
+-documentation swagger ou openAPI
+-tests unitaires et fonctionnels
+-integration tests
