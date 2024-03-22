@@ -26,3 +26,8 @@ dim 24 mars
 -documentation swagger ou openAPI
 -tests unitaires et fonctionnels
 -integration tests
+
+
+-> 
+    insert user
+        user_id -> insert restaurant

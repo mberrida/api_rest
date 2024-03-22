@@ -13,6 +13,7 @@ class CRUD{
         this.express_server = express_server
         this.table_name = DAO.get_config('table_name')
         this.DAO = DAO;
+        this.config = config
         
         this._make_base_path('post', DAO, config, async (req, res) => {
 
@@ -22,10 +23,10 @@ class CRUD{
                 object_to_add = config.format_params(object_to_add)
             }
 
-            let { err, message } = await this.DAO.add(object_to_add)
+            let { err, inserted } = await this.DAO.add(object_to_add)
 
 
-            res.sendStatus(200)
+            res.send(inserted)
         })
         
 
@@ -58,7 +59,7 @@ class CRUD{
         let params = req.params;
         let updatedObject = req.body;
 
-        if (config?.format_params) {
+        if (this.config?.format_params) {
             params = config.format_params(params);
             updatedObject = config.format_params(updatedObject);
         }
@@ -74,7 +75,7 @@ class CRUD{
     async _delete_object(req, res) {
         let params = req.params;
 
-        if (config?.format_params) {
+        if (this.config?.format_params) {
             params = config.format_params(params);
         }
 

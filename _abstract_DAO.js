@@ -9,6 +9,7 @@ class DAO{
         this._check_config(this.config)
        
     }
+    
 
     async build_table_before(){
         await make_table(this.config.table_name, this.config.columns, this.config.identifier_column)
@@ -23,7 +24,7 @@ class DAO{
         }
 
         if(!config.identifier_column){
-            throw new Error('No identifier provided in config')
+            console.warn('No identifier provided in config')
         }
 
         if(!config.table_name){
@@ -109,6 +110,25 @@ class DAO{
         
         return results
     }
+    async  findByEmailAndPassword(email, password) {
+        try {
+            const { error, result } = await query(
+                `SELECT * FROM User WHERE email = ? AND password = ?`,
+                [email, password]
+            );
+    
+
+            if (error || !result) {
+                return null;
+            }
+    
+
+            return result;
+        } catch (error) {
+
+            throw new Error(error.message);
+        }
+    }
 
     async add(object){
 
@@ -139,6 +159,7 @@ class DAO{
         
         return {error, inserted: await get_last_inserted_object(this.config.table_name, this.config.identifier_column)}
     }
+    
 
     async delete(identifier){
         let { error, result } = await select_many(`DELETE FROM ${this.config.table_name} WHERE ${this.config.identifier_column} = ?`, [identifier])
@@ -175,6 +196,61 @@ class DAO{
             throw new Error(`Error updating record: ${error.message}`);
         }
     }
+
+    async get_where(condition){
+        
+        let query = `SELECT * FROM ${this.config.table_name} WHERE ${Object.keys(condition).map((key) => `${key} = ?`).join(" AND ")};`
+
+        let { error, result } = await select_one(query, Object.keys(condition).map(key => condition[key]))
+
+        if (result){
+            for (let column of this.config.columns){
+
+                if (column.has_link_connection()){
+
+                    result[column.name] = (await column.get_DAO().get(result[column.name]))
+
+                }
+
+            }
+        }
+
+        if(error)console.error(error);
+
+        return result;
+
+    }
+
+    
+    
+    async get_all_where(condition){
+        
+        let query = `SELECT * FROM ${this.config.table_name} WHERE ${Object.keys(condition).map((key) => `${key} = ?`).join(" AND ")};`
+
+        let { error, results } = await select_many(query, Object.keys(condition).map(key => condition[key]))
+
+        if (results.length > 0){
+
+            for (let result of results){
+                for (let column of this.config.columns){
+
+                    if (column.has_link_connection()){
+    
+                        result[column.name] = (await column.get_DAO().get(result[column.name]))
+    
+                    }
+    
+                }
+            }
+
+        }
+
+        if(error)console.error(error);
+
+        return results;
+
+    }
+    
     
 
 }
