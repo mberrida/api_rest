@@ -1,3 +1,4 @@
+require('dotenv').config()
 const express = require('express');
 const { specs, swaggerUi } = require('./swagger');
 const app = express();
@@ -7,9 +8,14 @@ const { graphqlHTTP } = require('express-graphql');
 const { GraphQLSchema, GraphQLObjectType, GraphQLString } = require('graphql');
 const jwt = require('jsonwebtoken');
 
-const payload = { userId: user.id, email: user.email,  name: user.name };
-const secretKey = '';
-const token = jwt.sign(payload, secretKey, { expiresIn: '1h' });
+
+const secretKey = process.env.JWT_SECRET;
+
+
+const ROLE_RESTAURANT = "restaurant"
+const ROLE_COSTUMER = "costumer"
+const ROLE_DELEVERY_MAN = "deleveryman"
+
 
 async function main(){
 
@@ -125,9 +131,15 @@ async function main(){
     // Middleware pour vérifier le rôle de l'utilisateur
 const checkUserRole = (roles) => {
     return (req, res, next) => {
-        const userRole = req.headers['user-role']; 
+        const bearer_token = req.headers['Authorization']; 
 
-        if (roles.includes(userRole)) {
+        let [token_type, token] = bearer_token.split(' ')
+
+        if(token_type !== "Bearer")return res.status(403);//check if the token is a Bearer token type
+
+        let user_data = jwt.decode(token)
+
+        if (roles.includes(user_data.role)) {
             
             next();
         } else {
@@ -172,20 +184,65 @@ const checkUserRole = (roles) => {
  *       500:
  *         description: Erreur interne du serveur lors de la mise à jour du restaurant
  */
-    crud(app, restaurant_DAO)
-    crud(app, couvert_DAO)
-    crud(app, user_DAO, {
+    crud(app, customer_DAO, {
+        put: {
+            middlewares: [checkUserRole([ROLE_COSTUMER])]
+        },
         get: {
+            middlewares: [checkUserRole([ROLE_COSTUMER])]
+        },
+        delete: {
+            middlewares: [checkUserRole([ROLE_COSTUMER])]
+        }
+    })
+    crud(app, restaurant_DAO, {
+        delete: {
+            middlewares: [checkUserRole([ROLE_RESTAURANT])]
+        },
+        put: {
+            middlewares: [checkUserRole([ROLE_RESTAURANT])]
+        }
+    })
+    crud(app, menus_DAO, {
+        post: {
             middlewares: [
-                checkUserRole(['customer', 'restaurant', 'deliveryman']),
-                (req, res, next) => {
-
-                    console.log('Middleware for User GET route');
-                    next()
-                }
+                checkUserRole([ROLE_RESTAURANT])
+            ]
+        },
+        put: {
+            middlewares: [
+                checkUserRole([ROLE_RESTAURANT])
+            ]
+        },
+        delete: {
+            middlewares: [
+                checkUserRole([ROLE_RESTAURANT])
             ]
         }
     })
+    crud(app, deliveryman_DAO, {
+        get: {
+            middlewares: [checkUserRole([ROLE_DELEVERY_MAN])]
+        },
+        delete: {
+            middlewares: [checkUserRole([ROLE_DELEVERY_MAN])]
+        },
+        put: {
+            middlewares: [checkUserRole([ROLE_DELEVERY_MAN])]
+        }
+    })
+    crud(app, delivery_DAO, {
+        get: {
+            middlewares: [checkUserRole([ROLE_COSTUMER])]
+        },
+        post: {
+            middlewares: [checkUserRole([ROLE_COSTUMER])]
+        },
+        delete: {
+            middlewares: [checkUserRole([ROLE_COSTUMER, ROLE_RESTAURANT])]
+        }
+    })
+    crud(app, user_DAO)
 
     /*app.post('/inscription',async (req, res) => {
 
@@ -243,14 +300,13 @@ const checkUserRole = (roles) => {
     
         try {
 
-            const user = await user_DAO.findByEmailAndPassword(email, password);
-    
-            if (!user) {
-                return res.status(401).json({ message: "Email ou mot de passe incorrect." });
-            }
-    
+            const user = await user_DAO.get_where({email, password});
+ 
+            if (!user) return res.status(401).json({ message: "Email ou mot de passe incorrect." });
+            
+            const token = jwt.sign(user, secretKey, { expiresIn: '1h' });
 
-            return res.status(200).json({ message: "Authentification réussie.", user });
+            return res.status(200).json({ message: "Authentification réussie.", token, username: user.name });
         } catch (error) {
             console.error("Erreur lors de l'authentification :", error);
             return res.status(500).json({ message: "Erreur interne du serveur." });
@@ -277,7 +333,7 @@ const checkUserRole = (roles) => {
  */
 app.get('/user/:id', (req, res) => {
     
-  });
+});
   
   const schema = new GraphQLSchema({
     query: new GraphQLObjectType({
